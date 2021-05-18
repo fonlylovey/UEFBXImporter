@@ -1,6 +1,7 @@
-/Script
+Config
+/Saved
+/Binaries
 /DerivedDataCache
 /Intermediate
-/Saved
-/Config
-/Binaries
+/Plugins/RuntimeFBXImport/Intermediate
+/Plugins/RuntimeFBXImport/Binaries
