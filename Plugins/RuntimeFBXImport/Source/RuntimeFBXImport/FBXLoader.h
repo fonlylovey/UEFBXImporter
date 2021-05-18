@@ -3,7 +3,7 @@
 #pragma once
 #include "ProceduralMeshComponent.h"
 #include "FBXStruct.h"
-#include "E:/CodingSpace/FBXImport4_.26/Plugins\RuntimeFBXImport/ThirdParty/FBX/include/fbxsdk.h"
+#include "fbxsdk.h"
 
 
 
