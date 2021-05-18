@@ -1,0 +1,14 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UE4Editor-RuntimeFBXImport-Win64-DebugGame.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"E:\CodingSpace\FBXImport4_.26\Intermediate\Build\Win64\FBXImportDemoEditor\DebugGame\Engine\SharedPCH.Engine.NonOptimized.h.obj"
+"E:\CodingSpace\FBXImport4_.26\Plugins\RuntimeFBXImport\Intermediate\Build\Win64\UE4Editor\DebugGame\RuntimeFBXImport\Module.RuntimeFBXImport.cpp.obj"
+"E:\CodingSpace\FBXImport4_.26\Plugins\RuntimeFBXImport\Intermediate\Build\Win64\UE4Editor\DebugGame\RuntimeFBXImport\Module.RuntimeFBXImport.gen.cpp.obj"
+"E:\CodingSpace\FBXImport4_.26\Plugins\RuntimeFBXImport\Intermediate\Build\Win64\UE4Editor\DebugGame\RuntimeFBXImport\Default.rc2.res"
+/OUT:"E:\CodingSpace\FBXImport4_.26\Plugins\RuntimeFBXImport\Intermediate\Build\Win64\UE4Editor\DebugGame\RuntimeFBXImport\UE4Editor-RuntimeFBXImport-Win64-DebugGame.lib"
+/INCLUDE:IMPLEMENT_MODULE_RuntimeFBXImport

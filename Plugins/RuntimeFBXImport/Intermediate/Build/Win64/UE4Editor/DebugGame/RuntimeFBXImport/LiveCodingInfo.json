@@ -1,0 +1,34 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.RuntimeFBXImport.cpp.obj": [
+			"FBXActor.cpp.obj",
+			"FBXLoader.cpp.obj",
+			"FBXScene.cpp.obj",
+			"FBXStruct.cpp.obj",
+			"DLLManager.cpp.obj",
+			"FBXImportManager.cpp.obj",
+			"FBXMeshActor.cpp.obj",
+			"FBXMeshImport.cpp.obj",
+			"FBXSaveGame.cpp.obj",
+			"ImportFBXAsync.cpp.obj",
+			"RuntimeFBXImport.cpp.obj",
+			"RuntimeFBXImportBPLibrary.cpp.obj",
+			"FCColorBlock.cpp.obj",
+			"FCColorPicker.cpp.obj"
+		],
+		"Module.RuntimeFBXImport.gen.cpp.obj": [
+			"FBXActor.gen.cpp.obj",
+			"FBXColorBlock.gen.cpp.obj",
+			"FBXColorPicker.gen.cpp.obj",
+			"FBXImportManager.gen.cpp.obj",
+			"FBXMeshActor.gen.cpp.obj",
+			"FBXMeshImport.gen.cpp.obj",
+			"FBXSaveGame.gen.cpp.obj",
+			"FBXScene.gen.cpp.obj",
+			"FBXStruct.gen.cpp.obj",
+			"RuntimeFBXImport.init.gen.cpp.obj",
+			"RuntimeFBXImportBPLibrary.gen.cpp.obj"
+		]
+	}
+}

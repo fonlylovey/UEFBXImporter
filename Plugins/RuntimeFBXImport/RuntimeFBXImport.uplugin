@@ -1,0 +1,33 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Runtime FBX Import",
+	"Description": "Imports meshes from FBX files asynchronously in Unreal Project during runtime",
+	"Category": "Procedural",
+	"CreatedBy": "Athianoir",
+	"CreatedByURL": "http://athianoir.com",
+	"DocsURL": "http://athianoir.com/Doc_RuntimeFBXImport.html",
+	"MarketplaceURL": "https://www.unrealengine.com/marketplace/en-US/slug/4345e1b88fb241f8b693845f6d6d8684",
+	"SupportURL": "",
+	"EngineVersion": "4.26.0",
+	"CanContainContent": true,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "RuntimeFBXImport",
+			"Type": "Runtime",
+			"LoadingPhase": "PreLoadingScreen",
+			"WhitelistPlatforms": [
+				"Win64",
+				"Win32"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ProceduralMeshComponent",
+			"Enabled": true
+		}
+	]
+}
