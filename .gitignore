@@ -5,3 +5,5 @@ Config
 /Intermediate
 /Plugins/RuntimeFBXImport/Intermediate
 /Plugins/RuntimeFBXImport/Binaries
+/.vs
+/*.sln
