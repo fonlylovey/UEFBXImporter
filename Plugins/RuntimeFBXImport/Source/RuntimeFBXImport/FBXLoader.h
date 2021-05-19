@@ -40,7 +40,7 @@ private:
 
 	FVector ConvertScale(FbxVector4 Vector);
 
-	FQuat ConvertRotToQuat(FbxQuaternion quat);
+	FQuat ConvertRotToQuat(FbxVector4 Vector);
 
 	FVector readVertex(FbxVector4* pVertexArray, int vertexIndex, FbxAMatrix globalMatrix);
 
@@ -55,10 +55,6 @@ private:
 	FTransform readTransform(FbxNode* pNode);
 
 	void readMaterial(FbxLayerElementMaterial* pMaterial);
-
-	FbxAMatrix calcGlobalTransform(FbxNode* pNode, FbxAMatrix lParentGX);
-
-	void calcNodeTreeGlobalTransform(FbxNode* pNode, FbxAMatrix lParentGX);
 
 	//材质系统读取 材质分为 普通材质、纹理、shader三部分
 

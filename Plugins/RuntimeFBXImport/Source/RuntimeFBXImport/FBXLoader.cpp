@@ -43,7 +43,6 @@ void FBXLoader::loadingModelData(FbxScene* scene)
 	rootNode->ConvertPivotAnimationRecursive(NULL, FbxNode::EPivotSet::eDestinationPivot, 30);
 	FbxAMatrix parMat;
 	parMat.IsIdentity();
-	//calcNodeTreeGlobalTransform(rootNode, parMat);
 	UFBXMesh* mesh = new UFBXMesh(rootNode->GetUniqueID(), UTF8_TO_TCHAR(rootNode->GetName()));
 	ProcMeshMap.Add(rootNode->GetUniqueID(), mesh);
 
@@ -80,6 +79,8 @@ void FBXLoader::ConvertScene(FbxScene* pScene)
 
 void FBXLoader::traverseNode(FbxNode* pNode, UFBXMesh* pMesh)
 {
+	FString strName = FString(UTF8_TO_TCHAR(pNode->GetName()));
+	pMesh->MeshMatrix = readTransform(pNode);
 	if (pNode->GetNodeAttribute())
 	{
 		FbxNodeAttribute::EType attributeType = pNode->GetNodeAttribute()->GetAttributeType();
@@ -87,6 +88,7 @@ void FBXLoader::traverseNode(FbxNode* pNode, UFBXMesh* pMesh)
 		{
 		case FbxNodeAttribute::eMesh:
 			loadMesh(pNode, pMesh);
+			loadMaterial(pNode, pMesh);
 			break;
 		case FbxNodeAttribute::eSkeleton:
 			//loadSkeleton(pNode);
@@ -98,7 +100,7 @@ void FBXLoader::traverseNode(FbxNode* pNode, UFBXMesh* pMesh)
 			//loadCamera(pNode);
 			break;
 		}
-		loadMaterial(pNode, pMesh);
+		
 	}
 
 	for (int i = 0; i < pNode->GetChildCount(); ++i)
@@ -141,13 +143,6 @@ void FBXLoader::loadMesh(FbxNode* pNode, UFBXMesh* pMesh)
 		FbxLayerElementTangent* pTangentArray = fbxMesh->GetElementTangent(0);
 
 		FString strName = FString(UTF8_TO_TCHAR(pNode->GetName()));
-		//叉车 Group123，山 Obj3d66-1056223-1-574 
-		if (strName.Contains(""))
-		{
-			int a = 1;
-		}
-		pMesh->MeshMatrix = readTransform(pNode);
-		//FbxAMatrix globalMatrix = NodeMatrixMap[pNode->GetUniqueID()];
 
 		//三角面的
 		int triangleCount = fbxMesh->GetPolygonCount();
@@ -239,8 +234,12 @@ FVector FBXLoader::ConvertScale(FbxVector4 Vector)
 	return Out;
 }
 
-FQuat FBXLoader::ConvertRotToQuat(FbxQuaternion quat)
+FQuat FBXLoader::ConvertRotToQuat(FbxVector4 Vector)
 {
+	FbxAMatrix temp;
+	temp.SetIdentity();
+	temp.SetR(Vector);
+	FbxQuaternion quat = temp.GetQ();
 	FQuat UnrealQuat;
 	UnrealQuat.X = quat[0];
 	UnrealQuat.Y = -quat[1];
@@ -252,7 +251,6 @@ FQuat FBXLoader::ConvertRotToQuat(FbxQuaternion quat)
 FVector FBXLoader::readVertex(FbxVector4* meshVertexArray, int vertexIndex, FbxAMatrix globalMatrix)
 {
 	FbxVector4 vec4 = meshVertexArray[vertexIndex];
-	//vec4 = globalMatrix.MultT(vec4);
 	FVector vertex = ConvertPos(vec4);
 	return vertex;
 }
@@ -414,27 +412,21 @@ FProcMeshTangent FBXLoader::readTangent(FbxLayerElementTangent* pTangentArray, i
 
 FTransform FBXLoader::readTransform(FbxNode* pNode)
 {
-	/*
+
 	FVector RotOffset = ConvertPos(pNode->GetRotationOffset(FbxNode::EPivotSet::eSourcePivot));
 	FVector ScaleOffset = ConvertPos(pNode->GetScalingOffset(FbxNode::EPivotSet::eSourcePivot));
-	FVector RotPivot = ConvertPos(pNode->GetRotationPivot(FbxNode::EPivotSet::eSourcePivot));
-	FVector ScalePivot = ConvertPos(pNode->GetScalingPivot(FbxNode::EPivotSet::eSourcePivot));
 
 	FbxVector4& LocalTrans = pNode->GetScene()->GetAnimationEvaluator()->GetNodeLocalTranslation(pNode);
 	FbxVector4& LocalScale = pNode->GetScene()->GetAnimationEvaluator()->GetNodeLocalScaling(pNode);
 	FbxVector4& LocalRot = pNode->GetScene()->GetAnimationEvaluator()->GetNodeLocalRotation(pNode);
 
-	FbxAMatrix Temp;
-	Temp.SetIdentity();
-	Temp.SetR(LocalRot);
-	FbxQuaternion LocalRotQuat = Temp.GetQ();
-
-	FVector4 Trans = ConvertPos(LocalTrans);
-	FVector4 Scale = ConvertScale(LocalScale);
-	FQuat Rotation = ConvertRotToQuat(LocalRotQuat);
+	FbxAMatrix Temp = pNode->EvaluateLocalTransform();
+	FVector4 Trans = ConvertPos(Temp.GetT());
+	FVector4 Scale = ConvertScale(Temp.GetS());
+	FQuat Rotation = ConvertRotToQuat(Temp.GetR());
 
 	FVector RotEuler = Rotation.Euler();
-
+	
 	// Avoid singularity around 90 degree pitch, as UE4 doesn't seem to support it very well
 	// See UE-75467 and UE-83049
 	if (FMath::IsNearlyEqual(abs(RotEuler.Y), 90.0f))
@@ -452,152 +444,21 @@ FTransform FBXLoader::readTransform(FbxNode* pNode)
 		Rotation.W += 1.e-7;
 		Rotation.Normalize();
 	}
+	
+	FbxVector4 geoTrans = pNode->GetGeometricTranslation(FbxNode::EPivotSet::eSourcePivot);
+	FbxVector4 geoScale = pNode->GetGeometricScaling(FbxNode::EPivotSet::eSourcePivot);
+	FbxVector4 geoRot = pNode->GetGeometricRotation(FbxNode::EPivotSet::eSourcePivot);
+
+	FTransform FbxGeo;
+	FbxGeo.SetTranslation(ConvertPos(geoTrans));
+	FbxGeo.SetScale3D(ConvertScale(geoScale));
+	FbxGeo.SetRotation(ConvertRotToQuat(geoRot));
 
 	FTransform NewTransform;
 	NewTransform.SetTranslation(Trans + RotOffset + ScaleOffset);
 	NewTransform.SetScale3D(Scale);
 	NewTransform.SetRotation(Rotation);
-	*/
-
-	FbxVector4 lT = pNode->GetScene()->GetAnimationEvaluator()->GetNodeLocalTranslation(pNode);
-	FbxVector4 lR = pNode->GetScene()->GetAnimationEvaluator()->GetNodeLocalScaling(pNode);
-	FbxVector4 lS = pNode->GetScene()->GetAnimationEvaluator()->GetNodeLocalRotation(pNode);
-	FbxAMatrix localMatrix = FbxAMatrix(lT, lR, lS);
-
-	FbxVector4 eT = pNode->GetGeometricTranslation(FbxNode::eSourcePivot);
-	FbxVector4 eR = pNode->GetGeometricRotation(FbxNode::eSourcePivot);
-	FbxVector4 eS = pNode->GetGeometricScaling(FbxNode::eSourcePivot);
-	FbxAMatrix geoMatrix = FbxAMatrix(eT, eR, eS);
-	
-	FbxAMatrix theLocal = /*localMatrix * */geoMatrix;
-	FVector ueT = ConvertPos(theLocal.GetT());
-	FVector ueS = ConvertPos(theLocal.GetR());
-	FQuat ueR = ConvertRotToQuat(theLocal.GetQ());
-	FTransform NewTransform;
-	NewTransform.SetRotation(ueR);
-	NewTransform.SetTranslation(ueT);
-	NewTransform.SetScale3D(ueS);
-	return NewTransform;
-}
-
-FbxAMatrix FBXLoader::calcGlobalTransform(FbxNode* pNode, FbxAMatrix lParentGX)
-{
-	FbxAMatrix lTranlationM, lScalingM, lScalingPivotM, lScalingOffsetM, lRotationOffsetM, lRotationPivotM, \
-		lPreRotationM, lRotationM, lPostRotationM, lTransform;
-	FbxAMatrix lGlobalT, lGlobalRS;
-
-	if (!pNode)
-	{
-		lTransform.SetIdentity();
-		return lTransform;
-	}
-
-	// Construct translation matrix
-	FbxVector4 lTranslation = pNode->LclTranslation.Get();
-	lTranlationM.SetT(lTranslation);
-
-	// Construct rotation matrices
-	FbxVector4 lRotation = pNode->LclRotation.Get();
-	lRotationM.SetR(lRotation);
-
-	FbxVector4 lPreRotation = pNode->PreRotation.Get();
-	lPreRotationM.SetR(lPreRotation);
-
-	FbxVector4 lPostRotation = pNode->PostRotation.Get();
-	lPostRotationM.SetR(lPostRotation);
-
-	// Construct scaling matrix
-	FbxVector4 lScaling = pNode->LclScaling.Get();
-	lScalingM.SetS(lScaling);
-
-
-	// Construct offset and pivot matrices
-	FbxVector4 lScalingOffset = pNode->ScalingOffset.Get();
-	lScalingOffsetM.SetT(lScalingOffset);
-
-	FbxVector4 lScalingPivot = pNode->ScalingPivot.Get();
-	lScalingPivotM.SetT(lScalingPivot);
-
-	FbxVector4 lRotationOffset = pNode->RotationOffset.Get();
-	lRotationOffsetM.SetT(lRotationOffset);
-
-	FbxVector4 lRotationPivot = pNode->RotationPivot.Get();
-	lRotationPivotM.SetT(lRotationPivot);
-
-	//// Calculate the global transform matrix of the parent node
-	FbxNode* lParentNode = pNode->GetParent();
-
-	
-	//Construct Global Rotation
-	FbxAMatrix lLRM, lParentGRM;
-	FbxVector4 lParentGR = lParentGX.GetR();
-	lParentGRM.SetR(lParentGR);
-	lLRM = lPreRotationM * lRotationM * lPostRotationM;
-
-	FbxAMatrix lLSM, lParentGSM, lParentGRSM, lParentTM;
-	FbxVector4 lParentGT = lParentGX.GetT();
-	lParentTM.SetT(lParentGT);
-	lParentGRSM = lParentTM.Inverse() * lParentGX;
-	lParentGSM = lParentGRM.Inverse() * lParentGRSM;
-	lLSM = lScalingM;
-
-	FbxTransform::EInheritType lInheritType = pNode->InheritType.Get();
-	if (lInheritType == FbxTransform::eInheritRrSs)
-	{
-		lGlobalRS = lParentGRM * lLRM * lParentGSM * lLSM;
-	}
-	else if (lInheritType == FbxTransform::eInheritRSrs)
-	{
-		lGlobalRS = lParentGRM * lParentGSM * lLRM * lLSM;
-	}
-	else if (lInheritType == FbxTransform::eInheritRrs)
-	{
-		FbxAMatrix lParentLSM;
-
-		if (lParentNode && lParentNode->LclScaling.IsValid())
-		{
-			FbxVector4 lParentLS = lParentNode->LclScaling.Get();
-			lParentLSM.SetS(lParentLS);
-
-		}
-
-		FbxAMatrix lParentGSM_noLocal = lParentGSM * lParentLSM.Inverse();
-		lGlobalRS = lParentGRM * lLRM * lParentGSM_noLocal * lLSM;
-	}
-	else
-	{
-		//FBXSDK_printf("error, unknown inherit type! \n");
-	}
-
-	lTransform = lTranlationM * lRotationOffsetM * lRotationPivotM * lPreRotationM * lRotationM * lPostRotationM * lRotationPivotM.Inverse()\
-		* lScalingOffsetM * lScalingPivotM * lScalingM * lScalingPivotM.Inverse();
-	FbxVector4 lLocalTWithAllPivotAndOffsetInfo = lTransform.GetT();
-
-	FbxVector4 lGlobalTranslation = lParentGX.MultT(lLocalTWithAllPivotAndOffsetInfo);
-	lGlobalT.SetT(lGlobalTranslation);
-
-	lTransform = lGlobalT * lGlobalRS;
-
-	return lTransform;
-}
-
-void FBXLoader::calcNodeTreeGlobalTransform(FbxNode* pNode, FbxAMatrix lParentGX)
-{
-	FbxAMatrix currentgs = calcGlobalTransform(pNode, lParentGX);
-
-	if (pNode->GetMesh())
-	{
-		if (pNode->GetMesh()->GetPolygonVertexCount() > 0)
-		{
-			NodeMatrixMap.Add(pNode->GetUniqueID(), currentgs);
-
-		}
-	}
-
-	for (int32 ChildIndex = 0; ChildIndex < pNode->GetChildCount(); ChildIndex++)
-	{
-		calcNodeTreeGlobalTransform(pNode->GetChild(ChildIndex), currentgs);
-	}
+	return FbxGeo * NewTransform;
 }
 
 void FBXLoader::loadMaterial(FbxNode* pNode, UFBXMesh* pMesh)

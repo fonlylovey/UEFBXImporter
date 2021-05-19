@@ -47,7 +47,7 @@ void AFBXImportManager::ImportFBXFile(FString FileName, FVector Location, UMater
 {
 	FActorSpawnParameters SpawnInfo;
 	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	/**/	FBXLoader loader;
+	FBXLoader loader;
 	auto meshMap = loader.loadModel(FileName);
 	AFBXScene* myActor = GetWorld()->SpawnActor<AFBXScene>(AFBXScene::StaticClass(),
 		FVector(), FRotator(0, 0, 0), SpawnInfo);

@@ -21,7 +21,7 @@ public:
 	
 	void init(TMap<int32, UFBXMesh*> meshMap);
 
-	void traverseMeshTree(UFBXMesh* mesh, USceneComponent* pParent);
+	void traverseMeshTree(UFBXMesh* mesh, AActor* pParent);
 
 	virtual void BeginPlay() override;
 
