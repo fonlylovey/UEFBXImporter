@@ -57,7 +57,6 @@ private:
 	void readMaterial(FbxLayerElementMaterial* pMaterial);
 
 	//材质系统读取 材质分为 普通材质、纹理、shader三部分
-
 	void loadMaterial(FbxNode* pNode, UFBXMesh* pMesh);
 
 	UTexture2D* readTexture(const char* texTypeName, FbxSurfaceMaterial* pSurfaceMaterial);

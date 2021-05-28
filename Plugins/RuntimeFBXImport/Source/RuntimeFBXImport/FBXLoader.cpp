@@ -3,6 +3,7 @@
 #include <string>
 #include "IImageWrapper.h"
 #include "IImageWrapperModule.h"
+#include "LogMacros.h"
 
 TMap<int32, UFBXMesh*> FBXLoader::loadModel(FString strPath)
 {
@@ -142,7 +143,7 @@ void FBXLoader::loadMesh(FbxNode* pNode, UFBXMesh* pMesh)
 		FbxLayerElementUV* pUV1Array = fbxMesh->GetElementUV(1);
 		FbxLayerElementTangent* pTangentArray = fbxMesh->GetElementTangent(0);
 
-		FString strName = FString(UTF8_TO_TCHAR(pNode->GetName()));
+		FString strName = UTF8_TO_TCHAR(pNode->GetName());
 
 		//三角面的
 		int triangleCount = fbxMesh->GetPolygonCount();
@@ -467,69 +468,85 @@ void FBXLoader::loadMaterial(FbxNode* pNode, UFBXMesh* pMesh)
 	
 	if (fbxMesh == nullptr)
 		return;
-	FString strBase = "/Game/Materials/FBXMaterial";
-	FString strBrown = "/Engine/EditorMaterials/Cloth/CameraLitDoubleSided";
-	FString strTexture = "/Engine/EngineDebugMaterials/BoneWeightMaterial";
-	UMaterialInterface* baseMat = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, *strBase));
-	UMaterialInstanceDynamic* dynamicMaterial = UMaterialInstanceDynamic::Create(baseMat, nullptr);
-	pMesh->DynamicMaterial = dynamicMaterial;
-	
 	int matCount = pNode->GetMaterialCount();
 	int elemCount = fbxMesh->GetElementMaterialCount();
-	if (matCount != elemCount)
+
+	FString strMsg = FString::Printf(TEXT("节点：%s MaterialCount : %d  ElementMaterialCount : %d"),
+		UTF8_TO_TCHAR(pNode->GetName()), matCount, elemCount);
+	UE_LOG(LogTemp, Error, TEXT("%s"), *strMsg);
+
+	FbxLayerElementMaterial* fbxLayerElementMat = fbxMesh->GetElementMaterial();
+	if (fbxLayerElementMat != nullptr)
 	{
-		int a = 0;
-	}
-	int ployCount = fbxMesh->GetPolygonCount();
-	FbxLayerElementMaterial* materials = fbxMesh->GetElementMaterial();
-
-	for (int i = 0; i < elemCount; i++)
-	{
-		FbxLayerElementArrayTemplate<int> matIndex = materials->GetIndexArray();
-		int elemIndexCount = matIndex.GetCount();
-		if (materials->GetMappingMode() == FbxLayerElement::eByPolygon)
-		{
-			
-		}
-		else if(materials->GetMappingMode() == FbxLayerElement::eAllSame)
-		{
-
-		}
-		FbxSurfaceMaterial* pSurfaceMaterial = pNode->GetMaterial(i);
-		fetchFbxProperty(TEXT("EmissiveColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("EmissiveFactor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("AmbientColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("AmbientFactor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("DiffuseColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("DiffuseFactor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("BumpFactor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("TransparentColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("TransparencyFactor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("DisplacementColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("DisplacementFactor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("VectorDisplacementColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("VectorDisplacementFactor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("SpecularColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("SpecularFactor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("ReflectionColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("ReflectionFactor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("Shininess"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("ShininessExponent"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("Opacity"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxProperty(TEXT("Reflectivity"), pSurfaceMaterial, dynamicMaterial);
-
-		fetchFbxTexture(TEXT("Bump"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxTexture(TEXT("NormalMap"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxTexture(TEXT("DiffuseColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxTexture(TEXT("SpecularColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxTexture(TEXT("ReflectionColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxTexture(TEXT("TransparentColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxTexture(TEXT("EmissiveColor"), pSurfaceMaterial, dynamicMaterial);
-		fetchFbxTexture(TEXT("Shininess"), pSurfaceMaterial, dynamicMaterial);
-
-		readShader(pSurfaceMaterial, dynamicMaterial);
+		FString strBase = "/Game/Materials/FBXMaterial";
+		FString strBrown = "/Engine/EditorMaterials/Cloth/CameraLitDoubleSided";
+		FString strTexture = "/Engine/EngineDebugMaterials/BoneWeightMaterial";
 		
+
+		FbxLayerElementArrayTemplate<int> matIndex = fbxLayerElementMat->GetIndexArray();
+		int elemIndexCount = matIndex.GetCount();
+
+		for (int i = 0; i < elemCount; i++)
+		{
+			FbxSurfaceMaterial* pSurfaceMaterial = nullptr;
+			if (fbxLayerElementMat->GetMappingMode() == FbxLayerElement::eByPolygon)
+			{
+				pSurfaceMaterial = pNode->GetMaterial(0);
+			}
+			else if (fbxLayerElementMat->GetMappingMode() == FbxLayerElement::eAllSame)
+			{
+				int index = fbxLayerElementMat->GetIndexArray()[0];
+				pSurfaceMaterial = pNode->GetMaterial(index);
+			}
+
+			if (pSurfaceMaterial == nullptr)
+			{
+				//UE_LOG(LogTemp, Error, TEXT("材质为空"));
+				continue;
+			}
+
+			FString strMatName = UTF8_TO_TCHAR(pSurfaceMaterial->GetName());
+			UMaterialInterface* baseMat = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, *strBase));
+			UMaterialInstanceDynamic* dynamicMaterial = UMaterialInstanceDynamic::Create(baseMat, nullptr, FName(strMatName));
+			pMesh->DynamicMaterial = dynamicMaterial;
+			
+			fetchFbxProperty(TEXT("EmissiveColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("EmissiveFactor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("AmbientColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("AmbientFactor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("DiffuseColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("DiffuseFactor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("BumpFactor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("TransparentColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("TransparencyFactor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("DisplacementColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("DisplacementFactor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("VectorDisplacementColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("VectorDisplacementFactor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("SpecularColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("SpecularFactor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("ReflectionColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("ReflectionFactor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("Shininess"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("ShininessExponent"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("Opacity"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxProperty(TEXT("Reflectivity"), pSurfaceMaterial, dynamicMaterial);
+
+			
+			fetchFbxTexture(TEXT("Bump"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxTexture(TEXT("NormalMap"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxTexture(TEXT("DiffuseColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxTexture(TEXT("SpecularColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxTexture(TEXT("ReflectionColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxTexture(TEXT("TransparentColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxTexture(TEXT("EmissiveColor"), pSurfaceMaterial, dynamicMaterial);
+			fetchFbxTexture(TEXT("Shininess"), pSurfaceMaterial, dynamicMaterial);
+			
+			readShader(pSurfaceMaterial, dynamicMaterial);
+
+		}
 	}
+	
 }
 
 UTexture2D* FBXLoader::readTexture(const char* texTypeName, FbxSurfaceMaterial* pSurfaceMaterial)
@@ -563,31 +580,6 @@ UTexture2D* FBXLoader::readTexture(const char* texTypeName, FbxSurfaceMaterial* 
 			}
 			ueTexture = loadImage(strTexturePath);
 		}
-		/*
-		for (int j = 0; j < textureCount; j++)
-		{
-			FbxFileTexture* fileTexture = pProperty.GetSrcObject<FbxFileTexture>();
-			if (fileTexture != nullptr)
-			{
-				FString AbsoluteFilename = UTF8_TO_TCHAR(fileTexture->GetFileName());
-				FString strTexturePath;
-				if (IFileManager::Get().FileExists(*AbsoluteFilename))
-				{
-					strTexturePath = AbsoluteFilename;
-				}
-				else if (IFileManager::Get().FileExists(*(m_strDIr / UTF8_TO_TCHAR(fileTexture->GetRelativeFileName()))))
-				{
-					strTexturePath = m_strDIr / UTF8_TO_TCHAR(fileTexture->GetRelativeFileName());
-				}
-				else if (IFileManager::Get().FileExists(*(m_strDIr / AbsoluteFilename)))
-				{
-					strTexturePath = m_strDIr / AbsoluteFilename;
-				}
-				UTexture2D* ueTexture = loadImage(strTexturePath);
-				dynamicMat->SetTextureParameterValue("BaseTexture", ueTexture);
-			}
-		}
-		*/
 	}
 	return ueTexture;
 }
