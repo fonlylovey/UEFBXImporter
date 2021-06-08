@@ -5,4 +5,5 @@ UFBXMesh::UFBXMesh(int32 ID, FString strName)
 {
 	MeshID = ID;
 	MeshName = strName;
+	ParentMesh = nullptr;
 }

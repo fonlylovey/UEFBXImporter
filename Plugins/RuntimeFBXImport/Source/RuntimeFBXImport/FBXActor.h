@@ -17,7 +17,7 @@ class AFBXActor : public AActor
 public:
 	AFBXActor(const FObjectInitializer& Init);
 
-	void init(UFBXMesh* mesh);
+	void init(UMaterialInstanceDynamic* PMat, TArray<UFBXMesh*> meshList);
 
 	virtual void BeginPlay() override;
 

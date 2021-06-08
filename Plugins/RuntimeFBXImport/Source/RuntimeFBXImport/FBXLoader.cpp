@@ -42,13 +42,13 @@ void FBXLoader::loadingModelData(FbxScene* scene)
 	int matCount = scene->GetMaterialCount();
 	int texCount = scene->GetTextureCount();
 	rootNode->ConvertPivotAnimationRecursive(NULL, FbxNode::EPivotSet::eDestinationPivot, 30);
-	FbxAMatrix parMat;
-	parMat.IsIdentity();
 	UFBXMesh* mesh = new UFBXMesh(rootNode->GetUniqueID(), UTF8_TO_TCHAR(rootNode->GetName()));
 	ProcMeshMap.Add(rootNode->GetUniqueID(), mesh);
 
 	traverseNode(rootNode, mesh);
 	int meshCount = ProcMeshMap.Num();
+	int uMatCount = UMaterialMap.Num();
+	int uaaCOunt = UMatMeshMap.Num();
 }
 
 void FBXLoader::ConvertScene(FbxScene* pScene)
@@ -82,6 +82,10 @@ void FBXLoader::traverseNode(FbxNode* pNode, UFBXMesh* pMesh)
 {
 	FString strName = FString(UTF8_TO_TCHAR(pNode->GetName()));
 	pMesh->MeshMatrix = readTransform(pNode);
+	if (pMesh->ParentMesh != nullptr)
+	{
+		pMesh->MeshMatrix = pMesh->ParentMesh->MeshMatrix * pMesh->MeshMatrix;
+	}
 	if (pNode->GetNodeAttribute())
 	{
 		FbxNodeAttribute::EType attributeType = pNode->GetNodeAttribute()->GetAttributeType();
@@ -109,7 +113,7 @@ void FBXLoader::traverseNode(FbxNode* pNode, UFBXMesh* pMesh)
 		FbxNode* child = pNode->GetChild(i);
 		UFBXMesh* cMesh = new UFBXMesh(child->GetUniqueID(), child->GetName());
 		pMesh->Children.Add(cMesh);
-
+		cMesh->ParentMesh = pMesh;
 		traverseNode(child, cMesh);
 	}
 }
@@ -117,7 +121,6 @@ void FBXLoader::traverseNode(FbxNode* pNode, UFBXMesh* pMesh)
 void FBXLoader::loadMesh(FbxNode* pNode, UFBXMesh* pMesh)
 {
 	FbxMesh* fbxMesh = pNode->GetMesh();
-	
 	if (fbxMesh != nullptr)
 	{
 		//如果模型没有三角化，先转换成三角形
@@ -162,11 +165,10 @@ void FBXLoader::loadMesh(FbxNode* pNode, UFBXMesh* pMesh)
 				int vertexIndex = fbxMesh->GetPolygonVertex(i, j);
 				pMesh->ProcIndexBuffer.Add(meshVexIndex);
 				
-				FbxAMatrix fbxMat;
-				fbxMat.SetIdentity();
-				vertex.Position = readVertex(pVertexArray, vertexIndex, fbxMat);
+				FVector localPos = readVertex(pVertexArray, vertexIndex);
+				vertex.Position = pMesh->MeshMatrix.ToMatrixWithScale().TransformPosition(localPos);
 
-				vertex.Color = FColor(0.8, 0.8, 0.8, 1);
+				vertex.Color = FColor(0.8, 0, 0, 1);
 				if (pVertexColorArray != nullptr)
 				{
 					vertex.Color = readColor(pVertexColorArray, vertexIndex, meshVexIndex);
@@ -185,7 +187,10 @@ void FBXLoader::loadMesh(FbxNode* pNode, UFBXMesh* pMesh)
 				
 				if (pVertexNormalArray != nullptr)
 				{
-					vertex.Normal = readNormal(pVertexNormalArray, vertexIndex, meshVexIndex, fbxMat);
+					FVector localNormal = readNormal(pVertexNormalArray, vertexIndex, meshVexIndex);
+					FMatrix norMat = pMesh->MeshMatrix.ToMatrixWithScale().Inverse();
+					norMat.TransposeAdjoint();
+					vertex.Normal = norMat.InverseTransformVector(localNormal);
 				}
 				
 				if (pTangentArray != nullptr)
@@ -249,14 +254,14 @@ FQuat FBXLoader::ConvertRotToQuat(FbxVector4 Vector)
 	return UnrealQuat;
 }
 
-FVector FBXLoader::readVertex(FbxVector4* meshVertexArray, int vertexIndex, FbxAMatrix globalMatrix)
+FVector FBXLoader::readVertex(FbxVector4* meshVertexArray, int vertexIndex)
 {
 	FbxVector4 vec4 = meshVertexArray[vertexIndex];
 	FVector vertex = ConvertPos(vec4);
 	return vertex;
 }
 
-FVector FBXLoader::readNormal(FbxLayerElementNormal* pVertexNormalArray, int vertexIndex, int meshVertexIndex, FbxAMatrix globalMatrix)
+FVector FBXLoader::readNormal(FbxLayerElementNormal* pVertexNormalArray, int vertexIndex, int meshVertexIndex)
 {
 	FbxVector4 normal;
 	switch (pVertexNormalArray->GetMappingMode())
@@ -288,9 +293,6 @@ FVector FBXLoader::readNormal(FbxLayerElementNormal* pVertexNormalArray, int ver
 	}
 	break;
 	}
-	FbxAMatrix globalNormalMatrix = globalMatrix.Inverse();
-	globalNormalMatrix = globalNormalMatrix.Transpose();
-	globalNormalMatrix.MultT(normal);
 	FVector ueNormal = ConvertPos(normal);
 	ueNormal = ueNormal.GetSafeNormal();
 	return ueNormal;
@@ -465,6 +467,9 @@ FTransform FBXLoader::readTransform(FbxNode* pNode)
 void FBXLoader::loadMaterial(FbxNode* pNode, UFBXMesh* pMesh)
 {
 	FbxMesh* fbxMesh = pNode->GetMesh();
+	FString strBase = "/Game/Materials/FBXMaterial";
+	FString strTransparent = "/Game/Materials/FBXTransparent";
+	FString strTexture = "/Engine/EngineDebugMaterials/BoneWeightMaterial";
 	
 	if (fbxMesh == nullptr)
 		return;
@@ -478,11 +483,6 @@ void FBXLoader::loadMaterial(FbxNode* pNode, UFBXMesh* pMesh)
 	FbxLayerElementMaterial* fbxLayerElementMat = fbxMesh->GetElementMaterial();
 	if (fbxLayerElementMat != nullptr)
 	{
-		FString strBase = "/Game/Materials/FBXMaterial";
-		FString strBrown = "/Engine/EditorMaterials/Cloth/CameraLitDoubleSided";
-		FString strTexture = "/Engine/EngineDebugMaterials/BoneWeightMaterial";
-		
-
 		FbxLayerElementArrayTemplate<int> matIndex = fbxLayerElementMat->GetIndexArray();
 		int elemIndexCount = matIndex.GetCount();
 
@@ -498,17 +498,30 @@ void FBXLoader::loadMaterial(FbxNode* pNode, UFBXMesh* pMesh)
 				int index = fbxLayerElementMat->GetIndexArray()[0];
 				pSurfaceMaterial = pNode->GetMaterial(index);
 			}
-
 			if (pSurfaceMaterial == nullptr)
 			{
-				//UE_LOG(LogTemp, Error, TEXT("材质为空"));
 				continue;
 			}
-
+			int32 uniqueID = pSurfaceMaterial->GetUniqueID();
+			pMesh->MatID = uniqueID;
+			if (!UMatMeshMap.Contains(uniqueID))
+			{
+				UMatMeshMap.Add(uniqueID, TArray<UFBXMesh*>());
+			}
+			UMatMeshMap[uniqueID].Add(pMesh);
+			if (UMaterialMap.Contains(uniqueID))
+			{
+				continue;
+			}
 			FString strMatName = UTF8_TO_TCHAR(pSurfaceMaterial->GetName());
-			UMaterialInterface* baseMat = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, *strBase));
+			FString strMatPath = strBase;
+			if (isTransparent(pSurfaceMaterial))
+			{
+				strMatPath = strTransparent;
+			}
+			UMaterialInterface* baseMat = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, *strMatPath));
 			UMaterialInstanceDynamic* dynamicMaterial = UMaterialInstanceDynamic::Create(baseMat, nullptr, FName(strMatName));
-			pMesh->DynamicMaterial = dynamicMaterial;
+			UMaterialMap.Add(uniqueID, dynamicMaterial);
 			
 			fetchFbxProperty(TEXT("EmissiveColor"), pSurfaceMaterial, dynamicMaterial);
 			fetchFbxProperty(TEXT("EmissiveFactor"), pSurfaceMaterial, dynamicMaterial);
@@ -544,6 +557,22 @@ void FBXLoader::loadMaterial(FbxNode* pNode, UFBXMesh* pMesh)
 			
 			readShader(pSurfaceMaterial, dynamicMaterial);
 
+		}
+	}
+	else
+	{
+		if (fbxMesh->GetPolygonCount() > 0)
+		{
+			UMaterialInterface* baseMat = Cast<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), nullptr, *strBase));
+			UMaterialInstanceDynamic* dynamicMaterial = UMaterialInstanceDynamic::Create(baseMat, nullptr, FName("Not Material"));
+			UMaterialMap.Add(-1, dynamicMaterial);
+			int32 uniqueID = -1;
+			pMesh->MatID = uniqueID;
+			if (!UMatMeshMap.Contains(uniqueID))
+			{
+				UMatMeshMap.Add(uniqueID, TArray<UFBXMesh*>());
+			}
+			UMatMeshMap[uniqueID].Add(pMesh);
 		}
 	}
 	
@@ -647,18 +676,22 @@ UTexture2D* FBXLoader::loadImage(FString strPath)
 void FBXLoader::fetchFbxProperty(FString propertyName, FbxSurfaceMaterial* pSurfaceMaterial, UMaterialInstanceDynamic* dynamicMat)
 {
 	FbxProperty Prop = pSurfaceMaterial->FindProperty(TCHAR_TO_UTF8(*propertyName));
-	switch (Prop.GetPropertyDataType().GetType())
+	auto proType = Prop.GetPropertyDataType().GetType();
+	switch (proType)
 	{
 	case eFbxFloat:
-	{
-		float Value = Prop.Get<FbxFloat>();
-		dynamicMat->SetScalarParameterValue(FName(propertyName), Value);
-		break;
-	}
 	case eFbxDouble:
 	{
 		float Value = Prop.Get<FbxFloat>();
-		Value = Prop.Get<FbxDouble>();
+		if (propertyName.Equals("Opacity"))
+		{
+			if (Value > 0 && Value < 1)
+			{
+				dynamicMat->BasePropertyOverrides.bOverride_BlendMode = true;
+				dynamicMat->BasePropertyOverrides.BlendMode = BLEND_Translucent;
+				//Value = 1 - Value;
+			}
+		}
 		dynamicMat->SetScalarParameterValue(FName(propertyName), Value);
 		break;
 	}
@@ -708,7 +741,10 @@ void FBXLoader::fetchFbxTexture(FString textureName, FbxSurfaceMaterial* pSurfac
 		{
 			return;
 		}
-
+		if (textureName.Equals("TransparentColor"))
+		{
+			int a = 0;
+		}
 		FString TextureName = textureName;
 		TextureName.RemoveFromEnd(TEXT("Color"));	// DiffuseColor -> Diffuse
 		TextureName.RemoveFromEnd(TEXT("Map"));	    // NormalMap -> Normal
@@ -733,5 +769,16 @@ void FBXLoader::fetchFbxTexture(FString textureName, FbxSurfaceMaterial* pSurfac
 		Tex.Scale.Z = v[2];
 		*/
 	}
+}
+
+bool FBXLoader::isTransparent(FbxSurfaceMaterial* pSurfaceMaterial)
+{
+	FbxProperty Prop = pSurfaceMaterial->FindProperty("Opacity");
+	float Value = Prop.Get<FbxFloat>();
+	if (Value > 0 && Value < 1)
+	{
+		return true;
+	}
+	return false;
 }
 

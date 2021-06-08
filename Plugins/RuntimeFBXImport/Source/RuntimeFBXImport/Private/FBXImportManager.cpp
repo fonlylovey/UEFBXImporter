@@ -51,7 +51,7 @@ void AFBXImportManager::ImportFBXFile(FString FileName, FVector Location, UMater
 	auto meshMap = loader.loadModel(FileName);
 	AFBXScene* myActor = GetWorld()->SpawnActor<AFBXScene>(AFBXScene::StaticClass(),
 		FVector(), FRotator(0, 0, 0), SpawnInfo);
-	myActor->init(meshMap);
+	myActor->init(loader.getMaterial(), loader.getMatMeshMap());
 	myActor->SetActorLocation(FVector(0, 0, 0));
 	return;
 	

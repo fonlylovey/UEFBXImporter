@@ -16,12 +16,10 @@ class AFBXScene : public AActor
 	GENERATED_BODY()
 public:
 	AFBXScene(const FObjectInitializer& Init);
-
-	void init(UFBXMesh* mesh);
 	
-	void init(TMap<int32, UFBXMesh*> meshMap);
+	void init(TMap<int32, UMaterialInstanceDynamic*> matMap, TMap<int32, TArray<UFBXMesh*>> matMeshMap);
 
-	void traverseMeshTree(UFBXMesh* mesh, AActor* pParent);
+	void traverseMeshTree(UMaterialInstanceDynamic* pMat, TArray<UFBXMesh*> meshList, AActor* pParent);
 
 	virtual void BeginPlay() override;
 

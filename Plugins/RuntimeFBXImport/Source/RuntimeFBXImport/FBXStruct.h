@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "NoExportTypes.h"
+#include "../Plugins/Runtime/ProceduralMeshComponent/Source/ProceduralMeshComponent/Public/ProceduralMeshComponent.h"
 #include "FBXStruct.generated.h"
 
 UCLASS()
@@ -17,13 +18,16 @@ public:
 
 struct UFBXMesh : public FProcMeshSection
 {
-	UFBXMesh() {}
+	UFBXMesh() 
+	{
+		ParentMesh = nullptr;
+	}
 
 	UFBXMesh(int32 ID, FString strName);
 	TArray<UFBXMesh*> Children;
-
+	UFBXMesh* ParentMesh;
 	int32 MeshID;
 	FString MeshName;
 	FTransform MeshMatrix;
-	UMaterialInstanceDynamic* DynamicMaterial = nullptr;;
+	int32 MatID;
 };

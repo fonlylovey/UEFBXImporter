@@ -9,15 +9,22 @@ AFBXActor::AFBXActor(const FObjectInitializer& Init)
 	PrimaryActorTick.TickInterval = 0.1f;
 }
 
-void AFBXActor::init(UFBXMesh* mesh)
+void AFBXActor::init(UMaterialInstanceDynamic* PMat, TArray<UFBXMesh*> meshList)
 {
-	UProceduralMeshComponent* ProcMesh = NewObject<UProceduralMeshComponent>(this, FName(mesh->MeshName));
-	FProcMeshSection section = *mesh;
-	ProcMesh->SetProcMeshSection(0, section);
-	ProcMesh->SetMaterial(0, mesh->DynamicMaterial);
-	ProcMesh->SetRelativeTransform(mesh->MeshMatrix);
+	UProceduralMeshComponent* ProcMesh = NewObject<UProceduralMeshComponent>(this, FName(PMat->GetName()));
+	//ProcMesh->SetRelativeTransform(mesh->MeshMatrix);
+	int sectionIndex = 0;
+	for (UFBXMesh* mesh : meshList)
+	{
+		FProcMeshSection section = *mesh;
+		ProcMesh->SetProcMeshSection(sectionIndex, section);
+		ProcMesh->SetMaterial(sectionIndex, PMat);
+		sectionIndex++;
+	}
+	
 	ProcMesh->RegisterComponent();
 	RootComponent = ProcMesh;
+	AddInstanceComponent(ProcMesh);
 }
 
 void AFBXActor::BeginPlay()

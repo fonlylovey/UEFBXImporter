@@ -427,7 +427,6 @@ FbxAMatrix UFBXMeshImport::CalculateGlobalTransform(FbxNode* pNode, FbxAMatrix l
 }
 
 
-
 UTexture2D* UFBXMeshImport::LinkMaterialProperty(FbxSurfaceMaterial& FbxMaterial, const char* MaterialProperty, FName ParameterValue,bool bSetupAsNormalMap)
 {
 	bool bCreated = false;

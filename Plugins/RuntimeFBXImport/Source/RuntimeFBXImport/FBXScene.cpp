@@ -11,52 +11,39 @@ AFBXScene::AFBXScene(const FObjectInitializer& Init)
 	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 }
 
-void AFBXScene::init(TMap<int32, UFBXMesh*> meshMap)
+void AFBXScene::init(TMap<int32, UMaterialInstanceDynamic*> matMap, TMap<int32, TArray<UFBXMesh*>> matMeshMap)
 {
-	for (auto pair : meshMap)
+	RootComponent = NewObject<USceneComponent>(this, TEXT("RootComponent"));
+	RootComponent->SetMobility(EComponentMobility::Movable);
+	RootComponent->bVisualizeComponent = true;
+	AddInstanceComponent(RootComponent);
+
+	for (auto pair : matMap)
 	{
-		UFBXMesh* mesh = pair.Value;
-		if (mesh->MeshName == "RootNode")
-		{
-			RootComponent = NewObject<USceneComponent>(this, TEXT("RootComponent"));
-			RootComponent->SetMobility(EComponentMobility::Movable);
-			RootComponent->bVisualizeComponent = true;
-			AddInstanceComponent(RootComponent);
-		}
-		traverseMeshTree(mesh, this);
+		UMaterialInstanceDynamic* pMat = pair.Value;
+		TArray<UFBXMesh*> meshList = matMeshMap[pair.Key];
+		traverseMeshTree(pMat, meshList, this);
 	}
 	RegisterAllComponents();
 }
 
-
-
-void AFBXScene::init(UFBXMesh* mesh)
-{
-	UProceduralMeshComponent* ProcMesh = NewObject<UProceduralMeshComponent>(this, FName(mesh->MeshName));
-	FProcMeshSection section = *mesh;
-	ProcMesh->SetProcMeshSection(0, section);
-	ProcMesh->SetMaterial(0, mesh->DynamicMaterial);
-	ProcMesh->SetRelativeTransform(mesh->MeshMatrix);
-	ProcMesh->RegisterComponent();
-	ProcMesh->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-}
-
-void AFBXScene::traverseMeshTree(UFBXMesh* mesh, AActor* pParent)
+void AFBXScene::traverseMeshTree(UMaterialInstanceDynamic* pMat, TArray<UFBXMesh*> meshList, AActor* pParent)
 {
 	SpawnInfo.Owner = pParent;
 	AFBXActor* fbxActor = GWorld->SpawnActor<AFBXActor>(AFBXActor::StaticClass(),
 		FVector(), FRotator(0, 0, 0), SpawnInfo);
-	fbxActor->init(mesh);
-	fbxActor->SetActorLabel(mesh->MeshName);
+	fbxActor->init(pMat, meshList);
+	fbxActor->SetActorLabel(pMat->GetName());
 	fbxActor->SetOwner(pParent);
 	fbxActor->AttachToActor(pParent, FAttachmentTransformRules::KeepRelativeTransform);
+	/*
 	if (mesh->Children.Num() > 0)
-	{                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+	{
 		for (UFBXMesh* cMesh : mesh->Children)
 		{
 			traverseMeshTree(cMesh, fbxActor);
 		}
-	}
+	}*/
 }
 
 void AFBXScene::BeginPlay()

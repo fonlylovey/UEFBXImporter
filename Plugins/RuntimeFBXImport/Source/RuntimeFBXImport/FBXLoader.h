@@ -18,7 +18,7 @@ public:
 	TMap<int32, UFBXMesh*> loadModel(FString strPath);
 
 	TMap<int32, UMaterialInstanceDynamic*> getMaterial();
-
+	TMap<int32, TArray<UFBXMesh*>> getMatMeshMap() { return UMatMeshMap; }
 	~FBXLoader();
 
 private:
@@ -42,9 +42,9 @@ private:
 
 	FQuat ConvertRotToQuat(FbxVector4 Vector);
 
-	FVector readVertex(FbxVector4* pVertexArray, int vertexIndex, FbxAMatrix globalMatrix);
+	FVector readVertex(FbxVector4* pVertexArray, int vertexIndex);
 
-	FVector readNormal(FbxLayerElementNormal* pNormalArray, int vertexIndex, int meshVertexIndex, FbxAMatrix globalMatrix);
+	FVector readNormal(FbxLayerElementNormal* pNormalArray, int vertexIndex, int meshVertexIndex);
 
 	FColor readColor(FbxLayerElementVertexColor* pColorArray, int vertexIndex, int meshVertexIndex);
 
@@ -68,10 +68,14 @@ private:
 	void fetchFbxProperty(FString propertyName, FbxSurfaceMaterial* pSurfaceMaterial, UMaterialInstanceDynamic* dynamicMat);
 
 	void fetchFbxTexture(FString textureName, FbxSurfaceMaterial* pSurfaceMaterial, UMaterialInstanceDynamic* dynamicMat);
+
+	bool isTransparent(FbxSurfaceMaterial* pSurfaceMaterial);
+
 private:
 	FString m_strDIr;
 	FbxManager* m_pFbxmanager;
 	TMap<int32, UFBXMesh*> ProcMeshMap;
-	TMap<int32, FbxAMatrix> NodeMatrixMap;
 	TMap<int32, UMaterialInstanceDynamic*> UMaterialMap;
+	//<²ÄÖÊID, meshÊý×é>
+	TMap<int32, TArray<UFBXMesh*>> UMatMeshMap;
 };
